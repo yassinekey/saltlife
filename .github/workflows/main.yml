@@ -1,4 +1,4 @@
-name: Deploy to Production Server
+name: Deploy and Sync Database
 
 on:
   push:
@@ -9,7 +9,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Executing Remote Deployment
+      - name: Deploy via SSH and Check Database Changes
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -17,12 +17,25 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
-            cd /home/saltlife
+            cd /var/www/html/your-project-path
+            
+            # Pull the latest changes from GitHub
             git pull origin main
             
-            # Example: Run a WordPress CLI command
-            wp cache flush --path=/var/www/html/your-project-path
+            # Check if local_backup.sql was modified in this push/pull
+            if git diff --name-only ORIG_HEAD HEAD | grep -q "local_backup.sql"; then
+              echo "local_backup.sql has changed. Recreating database..."
+              
+              # Drop and recreate the database
+              mysql -u "${{ secrets.DB_USER }}" -p"${{ secrets.DB_PASSWORD }}" -e "DROP DATABASE IF EXISTS ${{ secrets.DB_NAME }}; CREATE DATABASE ${{ secrets.DB_NAME }};"
+              
+              # Import the updated backup file
+              mysql -u "${{ secrets.DB_USER }}" -p"${{ secrets.DB_PASSWORD }}" "${{ secrets.DB_NAME }}" < local_backup.sql
+              
+              echo "Database successfully re-imported from local_backup.sql."
+            else
+              echo "local_backup.sql did not change. Skipping database reset."
+            fi
             
-            # Example: Run a custom shell or PHP script
-            # sh ./scripts/deploy-tasks.sh
-            # php ./scripts/post-deploy.php
+            # Optional: Run additional commands like WP-CLI
+            # wp cache flush --path=/var/www/html/your-project-path
