@@ -18,6 +18,21 @@
  * @package WordPress
  */
 
+// Detect the environment and configure WordPress URLs.
+if (
+    isset($_SERVER['HTTP_HOST']) &&
+    (
+        strpos($_SERVER['HTTP_HOST'], 'localhost') === 0 ||
+        strpos($_SERVER['HTTP_HOST'], '127.0.0.1') === 0
+    )
+) {
+    define('WP_HOME', 'http://localhost:8080');
+    define('WP_SITEURL', 'http://localhost:8080');
+} else {
+    define('WP_HOME', 'https://saltlife.fit');
+    define('WP_SITEURL', 'https://saltlife.fit');
+}
+
 // ** Database settings - You can get this info from your web host ** //
 /** The name of the database for WordPress */
 define( 'DB_NAME', 'saltlife' );
